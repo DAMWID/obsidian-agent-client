@@ -73,6 +73,7 @@ function ChatComponent({
 				variant="sidebar"
 				viewId={viewId}
 				initialAgentId={restoredAgentId}
+				workingDirectory={view.getInitialCwd() ?? undefined}
 				viewHost={view}
 				onRegisterCallbacks={(callbacks) =>
 					view.setCallbacks(callbacks)
@@ -86,6 +87,7 @@ function ChatComponent({
 /** State stored for view persistence */
 interface ChatViewState extends Record<string, unknown> {
 	initialAgentId?: string;
+	initialCwd?: string;
 }
 
 export class ChatView extends ItemView implements IChatViewContainer {
@@ -98,6 +100,8 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	readonly viewType: ChatViewType = "sidebar";
 	/** Initial agent ID passed via state (for openNewChatViewWithAgent) */
 	private initialAgentId: string | null = null;
+	/** Initial working directory passed via state (for folder context menu) */
+	private initialCwd: string | null = null;
 	/** Callbacks to notify React when agentId is restored from workspace state */
 	private agentIdRestoredCallbacks: Set<(agentId: string) => void> =
 		new Set();
@@ -139,6 +143,7 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	getState(): ChatViewState {
 		return {
 			initialAgentId: this.initialAgentId ?? undefined,
+			initialCwd: this.initialCwd ?? undefined,
 		};
 	}
 
@@ -152,6 +157,7 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	): Promise<void> {
 		const previousAgentId = this.initialAgentId;
 		this.initialAgentId = state.initialAgentId ?? null;
+		this.initialCwd = state.initialCwd ?? null;
 		await super.setState(state, result);
 
 		// Notify React when agentId is restored and differs from previous value
@@ -168,6 +174,13 @@ export class ChatView extends ItemView implements IChatViewContainer {
 	 */
 	getInitialAgentId(): string | null {
 		return this.initialAgentId;
+	}
+
+	/**
+	 * Get the initial working directory for this view.
+	 */
+	getInitialCwd(): string | null {
+		return this.initialCwd;
 	}
 
 	/**

@@ -4,6 +4,8 @@ import {
 	WorkspaceSplit,
 	Notice,
 	requestUrl,
+	TFolder,
+	FileSystemAdapter,
 } from "obsidian";
 import * as semver from "semver";
 import { ChatView, VIEW_TYPE_CHAT } from "./ui/ChatView";
@@ -318,6 +320,26 @@ export default class AgentClientPlugin extends Plugin {
 
 		this.addSettingTab(new AgentClientSettingTab(this.app, this));
 
+		// Add "New agent chat here" to folder context menu
+		this.registerEvent(
+			this.app.workspace.on("file-menu", (menu, file) => {
+				if (!(file instanceof TFolder)) return;
+				const adapter = this.app.vault.adapter;
+				if (!(adapter instanceof FileSystemAdapter)) return;
+
+				menu.addItem((item) => {
+					item.setTitle("New agent chat here")
+						.setIcon("bot-message-square")
+						.onClick(() => {
+							void this.openNewChatViewWithAgent(
+								this.settings.defaultAgentId,
+								adapter.getFullPath(file.path),
+							);
+						});
+				});
+			}),
+		);
+
 		// Mount floating button (always present; visibility controlled by settings inside component)
 		this.floatingButton = new FloatingButtonContainer(this);
 		this.floatingButton.mount();
@@ -540,7 +562,7 @@ export default class AgentClientPlugin extends Plugin {
 	 * Open a new chat view with a specific agent.
 	 * Always creates a new view (doesn't reuse existing).
 	 */
-	async openNewChatViewWithAgent(agentId: string): Promise<void> {
+	async openNewChatViewWithAgent(agentId: string, cwd?: string): Promise<void> {
 		const leaf = this.createNewChatLeaf(true);
 		if (!leaf) {
 			console.warn("[AgentClient] Failed to create new leaf");
@@ -550,7 +572,7 @@ export default class AgentClientPlugin extends Plugin {
 		await leaf.setViewState({
 			type: VIEW_TYPE_CHAT,
 			active: true,
-			state: { initialAgentId: agentId },
+			state: { initialAgentId: agentId, initialCwd: cwd },
 		});
 
 		await this.app.workspace.revealLeaf(leaf);
